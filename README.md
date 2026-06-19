@@ -11,12 +11,31 @@ This repository hosts **`dicom-net`**, a crate that sits above [`dicom-ul`](http
 
 ## Status
 
-Early skeleton — APIs are unstable. See [`docs/`](docs/) for architecture and roadmap.
+Early alpha — SCP and SCU (C-ECHO, C-STORE with transcoding) are functional. APIs are unstable.
+See [`docs/`](docs/) for architecture, roadmap, and [interop testing](docs/INTEROP.md).
+
+## Tools
+
+| Binary | Description |
+|--------|-------------|
+| `storescp` | C-STORE SCP (receive DICOM files) |
+| `storescu` | C-STORE SCU (send DICOM files) |
+
+## Workspace layout
+
+This crate depends on a sibling checkout of [dicom-rs](https://github.com/Enet4/dicom-rs):
+
+```
+parent/
+  dicom-rs/
+  dicom-rs-net/
+```
 
 ## Workspace
 
 ```bash
 cargo check
+cargo test
 ```
 
 ## License
