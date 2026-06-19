@@ -1,0 +1,19 @@
+[package]
+name = "storescp"
+version = "0.1.0"
+description = "DICOM C-STORE SCP using dicom-net"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "storescp"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+dicom-net = { path = "../dicom-net" }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
