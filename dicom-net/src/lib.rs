@@ -14,7 +14,8 @@
 //!
 //! ## Status
 //!
-//! **Early planning / skeleton.** APIs are unstable and most modules are stubs.
+//! **Early alpha.** SCP (C-ECHO and streaming C-STORE) and SCU (C-ECHO, C-STORE with
+//! transcoding) are functional. APIs are unstable.
 //! See the repository `docs/` folder for architecture and roadmap.
 //!
 //! [`dicom-ul`]: https://docs.rs/dicom-ul
@@ -26,6 +27,7 @@ pub mod association;
 pub mod device;
 pub mod dimse;
 pub mod error;
+pub mod qr;
 pub mod scp;
 pub mod scu;
 pub mod service;
@@ -35,8 +37,10 @@ pub mod transfer;
 pub mod prelude {
     //! Commonly used types.
     pub use crate::association::AssociationContext;
+    pub use crate::device::{ApplicationEntity, Connection, Device, TransferCapability};
     pub use crate::dimse::{Dimse, DimseMessage};
     pub use crate::error::{Error, Result};
+    pub use crate::scu::{Client, DicomFile, ScuAssociation, StoreOptions};
     pub use crate::service::ServiceRegistry;
     pub use crate::status::Status;
 }

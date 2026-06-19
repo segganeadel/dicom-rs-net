@@ -34,6 +34,10 @@ pub struct DimseMessage {
     pub affected_sop_class_uid: Option<String>,
     /// Affected SOP instance UID, when present in the command.
     pub affected_sop_instance_uid: Option<String>,
+    /// Move destination AE title (C-MOVE-RQ).
+    pub move_destination: Option<String>,
+    /// Priority (C-STORE / C-MOVE / C-GET).
+    pub priority: Option<u16>,
     /// Encoded command dataset bytes (Implicit VR Little Endian).
     pub command: Vec<u8>,
 }
@@ -53,6 +57,8 @@ impl DimseMessage {
             presentation_context_id,
             affected_sop_class_uid: None,
             affected_sop_instance_uid: None,
+            move_destination: None,
+            priority: None,
             command,
         }
     }

@@ -1,25 +1,37 @@
-//! Integration test: in-process SCU sends C-STORE to dicom-net SCP.
+//! Integration test: C-STORE SCP receives objects (legacy raw PDU test retained for UL coverage).
 
 use std::sync::Arc;
 
-use dicom_core::{dicom_value, DataElement, VR};
+use dicom_core::{DataElement, VR, dicom_value};
 use dicom_dictionary_std::{tags, uids::MR_IMAGE_STORAGE};
 use dicom_net::device::DeviceBuilder;
 use dicom_net::scp::{CEchoService, CStoreService, FileCStoreSink};
 use dicom_object::{InMemDicomObject, OpenFileOptions, StandardDataDictionary};
 use dicom_transfer_syntax_registry::entries::IMPLICIT_VR_LITTLE_ENDIAN;
+use dicom_ul::association::client::AsyncClientAssociation;
 use dicom_ul::association::client::ClientAssociationOptions;
 use dicom_ul::pdu::{PDataValue, PDataValueType, Pdu};
-use dicom_ul::association::client::AsyncClientAssociation;
 use tokio::net::TcpListener;
 
 const SOP_INSTANCE_UID: &str = "1.2.3.4.5.6.7.8.9.0.1.2.3";
 
 fn build_test_dataset() -> Vec<u8> {
     let obj = InMemDicomObject::from_element_iter([
-        DataElement::new(tags::SOP_CLASS_UID, VR::UI, dicom_value!(Str, MR_IMAGE_STORAGE)),
-        DataElement::new(tags::SOP_INSTANCE_UID, VR::UI, dicom_value!(Str, SOP_INSTANCE_UID)),
-        DataElement::new(tags::PATIENT_NAME, VR::PN, dicom_value!(Str, "TEST^PATIENT")),
+        DataElement::new(
+            tags::SOP_CLASS_UID,
+            VR::UI,
+            dicom_value!(Str, MR_IMAGE_STORAGE),
+        ),
+        DataElement::new(
+            tags::SOP_INSTANCE_UID,
+            VR::UI,
+            dicom_value!(Str, SOP_INSTANCE_UID),
+        ),
+        DataElement::new(
+            tags::PATIENT_NAME,
+            VR::PN,
+            dicom_value!(Str, "TEST^PATIENT"),
+        ),
     ]);
     let ts = IMPLICIT_VR_LITTLE_ENDIAN.erased();
     let mut data = Vec::new();
@@ -55,7 +67,7 @@ fn build_cstore_command(message_id: u16) -> Vec<u8> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn cstore_scp_receives_and_stores_instance() {
+async fn cstore_scp_receives_via_raw_ul_pdus() {
     let output_dir = tempfile::tempdir().unwrap();
 
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
@@ -81,10 +93,7 @@ async fn cstore_scp_receives_and_stores_instance() {
     let mut scu: AsyncClientAssociation<_> = ClientAssociationOptions::new()
         .calling_ae_title("TESTSCU")
         .called_ae_title("TESTSCP")
-        .with_presentation_context(
-            MR_IMAGE_STORAGE,
-            vec![IMPLICIT_VR_LITTLE_ENDIAN.uid()],
-        )
+        .with_presentation_context(MR_IMAGE_STORAGE, vec![IMPLICIT_VR_LITTLE_ENDIAN.uid()])
         .establish_async(addr)
         .await
         .expect("association");

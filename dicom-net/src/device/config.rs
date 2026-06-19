@@ -1,9 +1,7 @@
 //! Association negotiation configuration for SCP devices.
 
 use dicom_transfer_syntax_registry::TransferSyntaxRegistry;
-use dicom_ul::association::server::{
-    AcceptAny, DefaultNegotiation, ServerAssociationOptions,
-};
+use dicom_ul::association::server::{AcceptAny, DefaultNegotiation, ServerAssociationOptions};
 
 use crate::transfer::ABSTRACT_SYNTAXES;
 
@@ -34,10 +32,7 @@ impl Default for AssociationConfig {
             promiscuous: false,
             max_pdu_length: 16_378,
             uncompressed_only: false,
-            abstract_syntaxes: ABSTRACT_SYNTAXES
-                .iter()
-                .map(|s| (*s).to_string())
-                .collect(),
+            abstract_syntaxes: ABSTRACT_SYNTAXES.iter().map(|s| (*s).to_string()).collect(),
             transfer_syntaxes: default_transfer_syntaxes(false),
         }
     }

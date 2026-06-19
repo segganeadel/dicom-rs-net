@@ -1,3 +1,5 @@
+//! Error types for the DIMSE networking layer.
+
 use snafu::Snafu;
 
 /// Crate-wide result type.
@@ -70,6 +72,47 @@ pub enum Error {
     EncodeResponse {
         /// Human-readable detail.
         message: String,
+    },
+
+    /// Remote address was not configured on the client.
+    #[snafu(display("remote address not configured"))]
+    RemoteNotConfigured,
+
+    /// Could not read a DICOM file from disk.
+    #[snafu(display("failed to read DICOM file {path}: {message}"))]
+    ReadFile {
+        /// File path.
+        path: String,
+        /// Human-readable detail.
+        message: String,
+    },
+
+    /// No compatible presentation context was negotiated for a file.
+    #[snafu(display("no presentation context for SOP class {sop_class}"))]
+    NoPresentationContext {
+        /// SOP class UID.
+        sop_class: String,
+    },
+
+    /// Transcoding is required but disabled or not possible.
+    #[snafu(display("transcoding required but not available: {message}"))]
+    TranscodeRequired {
+        /// Human-readable detail.
+        message: String,
+    },
+
+    /// Transcoding operation failed.
+    #[snafu(display("transcoding failed: {message}"))]
+    Transcode {
+        /// Human-readable detail.
+        message: String,
+    },
+
+    /// Unsupported transfer syntax in a file.
+    #[snafu(display("unsupported transfer syntax: {uid}"))]
+    UnsupportedTransferSyntax {
+        /// Transfer syntax UID.
+        uid: String,
     },
 }
 

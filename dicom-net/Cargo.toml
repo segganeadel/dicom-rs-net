@@ -22,6 +22,12 @@ dicom-ul = { workspace = true, features = ["async"] }
 snafu = { workspace = true }
 tracing = { workspace = true }
 tokio = { workspace = true }
+walkdir = { workspace = true }
+bytes = "1"
+socket2 = "0.5"
+dicom-pixeldata = { workspace = true, optional = true }
+rustls = { version = "0.23", optional = true, default-features = false, features = ["logging", "tls12", "std", "ring"] }
+tokio-rustls = { version = "0.26", optional = true, default-features = false, features = ["logging", "tls12"] }
 
 [dev-dependencies]
 dicom-core = { workspace = true }
@@ -31,11 +37,14 @@ dicom-transfer-syntax-registry = { workspace = true }
 dicom-ul = { workspace = true, features = ["async"] }
 tempfile = "3.10"
 tokio = { workspace = true, features = ["test-util"] }
-
+rustls-cert-gen = "0.2"
+rcgen = "0.13"
+rustls = { version = "0.23", default-features = false, features = ["logging", "tls12", "std", "ring"] }
 [features]
-default = ["async"]
+default = ["async", "transcode"]
 async = []
-tls = ["dicom-ul/async-tls"]
+transcode = ["dep:dicom-pixeldata"]
+tls = ["dicom-ul/async-tls", "dep:rustls", "dep:tokio-rustls"]
 
 [package.metadata.docs.rs]
 all-features = true

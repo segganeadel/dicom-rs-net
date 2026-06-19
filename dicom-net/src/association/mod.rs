@@ -1,13 +1,18 @@
-﻿//! Per-association context for DIMSE service handlers.
+//! Per-association context for DIMSE service handlers.
 
 mod dataset_stream;
 mod dimse_loop;
+mod retrieve;
 
 use dicom_ul::association::server::AsyncServerAssociation;
 use dicom_ul::pdu::PresentationContextNegotiated;
 
 pub use dataset_stream::DatasetReader;
 pub use dimse_loop::handle_association;
+pub use retrieve::{
+    CRetrieveSink, FileRetrieveSink, InstanceLocator, RetrieveSource, run_cget_subops,
+    run_cmove_subops,
+};
 
 /// Snapshot of association state exposed to SCP services.
 #[derive(Debug, Clone)]
@@ -49,8 +54,6 @@ impl AssociationContext {
 
     /// Finds a presentation context by its ID.
     pub fn presentation_context(&self, id: u8) -> Option<&PresentationContextNegotiated> {
-        self.presentation_contexts
-            .iter()
-            .find(|ctx| ctx.id == id)
+        self.presentation_contexts.iter().find(|ctx| ctx.id == id)
     }
 }

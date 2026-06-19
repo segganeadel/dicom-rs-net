@@ -149,9 +149,10 @@ impl FileCStoreSink {
         file.write_all(b"DICM").await?;
 
         let mut meta_bytes = Vec::new();
-        meta.write(&mut meta_bytes).map_err(|e| Error::EncodeResponse {
-            message: e.to_string(),
-        })?;
+        meta.write(&mut meta_bytes)
+            .map_err(|e| Error::EncodeResponse {
+                message: e.to_string(),
+            })?;
         file.write_all(&meta_bytes).await?;
 
         Ok(())
@@ -184,11 +185,13 @@ impl CStoreSink for FileCStoreSink {
     where
         S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send,
     {
-        let sop_class_uid = command.affected_sop_class_uid.as_deref().ok_or_else(|| {
-            Error::InvalidCommand {
-                message: "missing Affected SOP Class UID".to_string(),
-            }
-        })?;
+        let sop_class_uid =
+            command
+                .affected_sop_class_uid
+                .as_deref()
+                .ok_or_else(|| Error::InvalidCommand {
+                    message: "missing Affected SOP Class UID".to_string(),
+                })?;
         let sop_instance_uid = command
             .affected_sop_instance_uid
             .as_deref()
@@ -198,22 +201,12 @@ impl CStoreSink for FileCStoreSink {
 
         tokio::fs::create_dir_all(&self.output_dir).await?;
 
-        let temp_path = self
-            .output_dir
-            .join(format!("{sop_instance_uid}.part"));
-        let final_path = self
-            .output_dir
-            .join(format!("{sop_instance_uid}.dcm"));
+        let temp_path = self.output_dir.join(format!("{sop_instance_uid}.part"));
+        let final_path = self.output_dir.join(format!("{sop_instance_uid}.dcm"));
 
         let mut file = File::create(&temp_path).await?;
         if let Err(e) = async {
-            Self::write_fmi(
-                &mut file,
-                sop_class_uid,
-                sop_instance_uid,
-                transfer_syntax,
-            )
-            .await?;
+            Self::write_fmi(&mut file, sop_class_uid, sop_instance_uid, transfer_syntax).await?;
             let mut buf = [0u8; 64 * 1024];
             loop {
                 let n = dataset.read(&mut buf).await?;

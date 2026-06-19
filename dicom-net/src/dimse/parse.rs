@@ -7,17 +7,30 @@ use dicom_transfer_syntax_registry::entries::IMPLICIT_VR_LITTLE_ENDIAN;
 use crate::dimse::{CommandField, DimseMessage};
 use crate::error::{Error, Result};
 
-/// Parses a DIMSE command dataset from raw bytes.
-pub fn parse_command(
-    bytes: &[u8],
-    presentation_context_id: u8,
-) -> Result<DimseMessage> {
+/// Returns the raw command field value without requiring a message ID.
+pub fn command_field_raw(bytes: &[u8]) -> Result<u16> {
     let ts = IMPLICIT_VR_LITTLE_ENDIAN.erased();
-    let obj = InMemDicomObject::read_dataset_with_ts(bytes, &ts).map_err(|e| {
-        Error::InvalidCommand {
+    let obj =
+        InMemDicomObject::read_dataset_with_ts(bytes, &ts).map_err(|e| Error::InvalidCommand {
             message: e.to_string(),
-        }
-    })?;
+        })?;
+    obj.element(tags::COMMAND_FIELD)
+        .map_err(|_| Error::InvalidCommand {
+            message: "missing Command Field".to_string(),
+        })?
+        .to_int::<u16>()
+        .map_err(|_| Error::InvalidCommand {
+            message: "Command Field is not an integer".to_string(),
+        })
+}
+
+/// Parses a DIMSE command dataset from raw bytes.
+pub fn parse_command(bytes: &[u8], presentation_context_id: u8) -> Result<DimseMessage> {
+    let ts = IMPLICIT_VR_LITTLE_ENDIAN.erased();
+    let obj =
+        InMemDicomObject::read_dataset_with_ts(bytes, &ts).map_err(|e| Error::InvalidCommand {
+            message: e.to_string(),
+        })?;
 
     let command_field_raw = obj
         .element(tags::COMMAND_FIELD)
@@ -29,11 +42,10 @@ pub fn parse_command(
             message: "Command Field is not an integer".to_string(),
         })?;
 
-    let command_field = CommandField::from_u16(command_field_raw).ok_or_else(|| {
-        Error::InvalidCommand {
+    let command_field =
+        CommandField::from_u16(command_field_raw).ok_or_else(|| Error::InvalidCommand {
             message: format!("unknown command field {command_field_raw:#06x}"),
-        }
-    })?;
+        })?;
 
     let message_id = obj
         .element(tags::MESSAGE_ID)
@@ -43,7 +55,7 @@ pub fn parse_command(
         .to_int::<u16>()
         .map_err(|_| Error::InvalidCommand {
             message: "Message ID is not an integer".to_string(),
-        })? as u16;
+        })?;
 
     let affected_sop_class_uid = obj
         .element(tags::AFFECTED_SOP_CLASS_UID)
@@ -57,6 +69,17 @@ pub fn parse_command(
         .and_then(|e| e.to_str().ok())
         .map(|s| s.trim_end_matches('\0').to_string());
 
+    let move_destination = obj
+        .element(tags::MOVE_DESTINATION)
+        .ok()
+        .and_then(|e| e.to_str().ok())
+        .map(|s| s.trim_end_matches([' ', '\0']).to_string());
+
+    let priority = obj
+        .element(tags::PRIORITY)
+        .ok()
+        .and_then(|e| e.to_int::<u16>().ok());
+
     Ok(DimseMessage {
         command_field,
         dimse: command_field.dimse(),
@@ -64,6 +87,8 @@ pub fn parse_command(
         presentation_context_id,
         affected_sop_class_uid,
         affected_sop_instance_uid,
+        move_destination,
+        priority,
         command: bytes.to_vec(),
     })
 }
