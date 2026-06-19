@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use clap::Parser;
-use dicom_net::device::DeviceBuilder;
+use dicom_net::device::{ApplicationEntity, Connection, Device};
 use dicom_net::scp::{CEchoService, CStoreService, FileCStoreSink};
-use tracing::{error, Level};
+use tracing::{Level, error};
 use tracing_subscriber::EnvFilter;
 
 /// DICOM C-STORE SCP
@@ -54,7 +54,9 @@ async fn main() {
             } else {
                 Level::INFO
             })
-            .with_env_filter(EnvFilter::from_default_env().add_directive("dicom_net=info".parse().unwrap()))
+            .with_env_filter(
+                EnvFilter::from_default_env().add_directive("dicom_net=info".parse().unwrap()),
+            )
             .finish(),
     )
     .expect("Could not set up global logging subscriber");
@@ -73,20 +75,29 @@ async fn main() {
 
     let bind_addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::UNSPECIFIED, app.port));
 
-    let result = DeviceBuilder::new()
-        .ae_title(&app.ae_title)
-        .bind(bind_addr)
-        .strict(app.strict)
+    let conn = Connection::new()
+        .port(bind_addr.port())
+        .max_pdu_length(app.max_pdu_length)
+        .strict(app.strict);
+
+    let mut device = Device::new();
+    let conn_index = device.add_connection(conn);
+
+    let mut ae = ApplicationEntity::new(&app.ae_title)
+        .acceptor(true)
         .promiscuous(app.promiscuous)
         .uncompressed_only(app.uncompressed_only)
-        .max_pdu_length(app.max_pdu_length)
-        .register_service(Arc::new(CEchoService::new()))
-        .register_cstore(cstore)
-        .run()
-        .await;
+        .add_connection(conn_index);
+    ae.add_default_storage_capabilities();
+    ae.register_service(Arc::new(CEchoService::new()));
+    ae.register_cstore(cstore);
+    device.add_application_entity(ae);
 
-    if let Err(e) = result {
+    let device = Arc::new(device);
+    if let Err(e) = device.clone().bind_connections().await {
         error!("{e}");
         std::process::exit(1);
     }
+
+    std::future::pending::<()>().await;
 }

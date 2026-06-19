@@ -1,0 +1,20 @@
+[package]
+name = "storescu"
+version = "0.1.0"
+description = "DICOM C-STORE SCU using dicom-net"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "storescu"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+dicom-net = { path = "../dicom-net", features = ["transcode"] }
+indicatif = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
