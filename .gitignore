@@ -1,8 +1,10 @@
 /target
+/target2
 **/*.rs.bk
 Cargo.lock
 .idea/
 .vscode/
+.cursor/
 *.swp
 *.swo
 .DS_Store

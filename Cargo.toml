@@ -1,5 +1,6 @@
 [workspace]
-members = ["dicom-net", "storescp"]
+members = ["dicom-net", "storescp", "storescu"]
+exclude = ["vendor/dicom-ul"]
 resolver = "3"
 
 [workspace.package]
@@ -14,10 +15,13 @@ dicom-dictionary-std = { path = "../dicom-rs/dictionary-std", version = "0.9" }
 dicom-encoding = { path = "../dicom-rs/encoding", version = "0.9.1" }
 dicom-object = { path = "../dicom-rs/object", version = "0.9.1" }
 dicom-transfer-syntax-registry = { path = "../dicom-rs/transfer-syntax-registry", version = "0.9.1" }
-dicom-ul = { path = "../dicom-rs/ul", version = "0.9.1" }
+dicom-ul = { path = "vendor/dicom-ul", version = "0.9.1" }
 snafu = "0.9"
 tracing = "0.1.36"
 tokio = { version = "1.38.0", features = ["rt", "rt-multi-thread", "net", "io-util", "macros", "sync", "time", "fs"] }
 async-trait = "0.1.88"
 clap = { version = "4.5", features = ["derive"] }
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
+walkdir = "2.5"
+indicatif = "0.18"
+dicom-pixeldata = { path = "../dicom-rs/pixeldata", version = "0.9.1" }
