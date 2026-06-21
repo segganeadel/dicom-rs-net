@@ -14,11 +14,11 @@ impl ScuAssociation {
         identifier: &[u8],
         move_destination: &str,
     ) -> Result<SubOperationCounts> {
-        let pc = self
-            .find_context(STUDY_ROOT_MOVE)
-            .ok_or_else(|| Error::NoPresentationContext {
-                sop_class: STUDY_ROOT_MOVE.to_string(),
-            })?;
+        let pc =
+            self.find_context(STUDY_ROOT_MOVE)
+                .ok_or_else(|| Error::NoPresentationContext {
+                    sop_class: STUDY_ROOT_MOVE.to_string(),
+                })?;
 
         let message_id = self.next_message_id();
         let cmd = build_cmove_rq(STUDY_ROOT_MOVE, message_id, move_destination)?;

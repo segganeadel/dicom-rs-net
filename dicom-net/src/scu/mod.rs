@@ -1,11 +1,11 @@
 //! DIMSE client (SCU) API.
 
 mod association;
+mod cmove;
 mod config;
 mod file;
 mod find;
 mod get;
-mod cmove;
 mod presentation_context;
 mod store;
 mod transcode;

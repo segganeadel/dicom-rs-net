@@ -36,9 +36,7 @@ fn write_test_file(path: &std::path::Path) {
         .transfer_syntax(ts.uid())
         .build()
         .unwrap();
-    obj.with_exact_meta(file_meta)
-        .write_to_file(path)
-        .unwrap();
+    obj.with_exact_meta(file_meta).write_to_file(path).unwrap();
 }
 
 fn build_image_move_identifier() -> Vec<u8> {
@@ -80,14 +78,13 @@ async fn cmove_roundtrip() {
         .acceptor(true)
         .add_connection(conn_index);
     dest_ae.add_default_storage_capabilities();
-    dest_ae.register_cstore(Arc::new(CStoreService::new(FileCStoreSink::new(out_path.clone()))));
+    dest_ae.register_cstore(Arc::new(CStoreService::new(FileCStoreSink::new(
+        out_path.clone(),
+    ))));
     device.add_application_entity(dest_ae);
 
     let mut destinations = HashMap::new();
-    destinations.insert(
-        "DESTSCP".to_string(),
-        format!("DESTSCP@{}", addr),
-    );
+    destinations.insert("DESTSCP".to_string(), format!("DESTSCP@{}", addr));
 
     let mut qr_ae = ApplicationEntity::new("QRSCP")
         .acceptor(true)
@@ -120,7 +117,10 @@ async fn cmove_roundtrip() {
     let stored = output_dir.path().join(format!("{SOP_INSTANCE_UID}.dcm"));
     let obj = OpenFileOptions::new().open_file(&stored).unwrap();
     assert_eq!(
-        obj.element(tags::SOP_INSTANCE_UID).unwrap().to_str().unwrap(),
+        obj.element(tags::SOP_INSTANCE_UID)
+            .unwrap()
+            .to_str()
+            .unwrap(),
         SOP_INSTANCE_UID
     );
 

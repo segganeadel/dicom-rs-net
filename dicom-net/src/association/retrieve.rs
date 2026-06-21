@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use dicom_core::{DataElement, VR, dicom_value};
 use dicom_dictionary_std::tags;
-use dicom_object::{InMemDicomObject, OpenFileOptions};
 use dicom_encoding::TransferSyntaxIndex;
+use dicom_object::{InMemDicomObject, OpenFileOptions};
 use dicom_transfer_syntax_registry::TransferSyntaxRegistry;
 use dicom_transfer_syntax_registry::entries::IMPLICIT_VR_LITTLE_ENDIAN;
 use dicom_ul::association::client::AsyncClientAssociation;
@@ -338,9 +338,7 @@ async fn receive_cstore_rsp_client(
     }
 }
 
-async fn receive_cstore_rsp_assoc<S>(
-    association: &mut AsyncServerAssociation<S>,
-) -> Result<Status>
+async fn receive_cstore_rsp_assoc<S>(association: &mut AsyncServerAssociation<S>) -> Result<Status>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send,
 {
@@ -367,17 +365,16 @@ fn read_instance_dataset(inst: &InstanceLocator) -> Result<Vec<u8>> {
             let obj = OpenFileOptions::new()
                 .open_file(path)
                 .map_err(|e| Error::Io {
-                    source: std::io::Error::new(std::io::ErrorKind::Other, e.to_string()),
+                    source: std::io::Error::other(e.to_string()),
                 })?;
             let ts_uid = obj.meta().transfer_syntax();
-            let ts = TransferSyntaxRegistry.get(ts_uid).ok_or_else(|| {
-                Error::InvalidCommand {
+            let ts = TransferSyntaxRegistry
+                .get(ts_uid)
+                .ok_or_else(|| Error::InvalidCommand {
                     message: format!("unknown transfer syntax {ts_uid}"),
-                }
-            })?;
+                })?;
             let mut data = Vec::new();
-            (&obj)
-                .write_dataset_with_ts(&mut data, ts)
+            obj.write_dataset_with_ts(&mut data, ts)
                 .map_err(|e| Error::InvalidCommand {
                     message: e.to_string(),
                 })?;
@@ -387,13 +384,14 @@ fn read_instance_dataset(inst: &InstanceLocator) -> Result<Vec<u8>> {
 }
 
 /// Parses query retrieve level from an identifier dataset.
+#[allow(dead_code)]
 pub fn parse_query_level(identifier: &[u8], transfer_syntax: &str) -> Result<QueryRetrieveLevel> {
     use dicom_transfer_syntax_registry::TransferSyntaxRegistry;
-    let ts = TransferSyntaxRegistry.get(transfer_syntax).ok_or_else(|| {
-        Error::InvalidCommand {
+    let ts = TransferSyntaxRegistry
+        .get(transfer_syntax)
+        .ok_or_else(|| Error::InvalidCommand {
             message: format!("unknown transfer syntax {transfer_syntax}"),
-        }
-    })?;
+        })?;
     let obj = InMemDicomObject::read_dataset_with_ts(identifier, ts).map_err(|e| {
         Error::InvalidCommand {
             message: e.to_string(),
@@ -408,7 +406,7 @@ pub fn parse_query_level(identifier: &[u8], transfer_syntax: &str) -> Result<Que
         .map_err(|_| Error::InvalidCommand {
             message: "QueryRetrieveLevel is not a string".to_string(),
         })?;
-    QueryRetrieveLevel::from_str(&level_str).ok_or_else(|| Error::InvalidCommand {
+    level_str.parse().map_err(|_| Error::InvalidCommand {
         message: format!("unsupported QueryRetrieveLevel: {level_str}"),
     })
 }
@@ -437,7 +435,7 @@ impl CRetrieveSink for FileRetrieveSink {
             let obj = OpenFileOptions::new()
                 .open_file(path)
                 .map_err(|e| Error::Io {
-                    source: std::io::Error::new(std::io::ErrorKind::Other, e.to_string()),
+                    source: std::io::Error::other(e.to_string()),
                 })?;
             let meta = obj.meta();
             out.push(InstanceLocator {

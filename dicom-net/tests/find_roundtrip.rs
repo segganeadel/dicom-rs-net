@@ -40,11 +40,12 @@ async fn find_roundtrip() {
         .acceptor(true)
         .add_connection(conn_index);
     let mut find_cap = TransferCapability::query_retrieve_find_scp(STUDY_ROOT_FIND);
-    find_cap.transfer_syntaxes = vec![dicom_dictionary_std::uids::IMPLICIT_VR_LITTLE_ENDIAN.to_string()];
+    find_cap.transfer_syntaxes =
+        vec![dicom_dictionary_std::uids::IMPLICIT_VR_LITTLE_ENDIAN.to_string()];
     scp_ae.add_scp_capability(find_cap);
-    scp_ae.register_cfind(Arc::new(CFindService::new(Arc::new(StaticCFindSink::new(vec![
-        match_bytes,
-    ])))));
+    scp_ae.register_cfind(Arc::new(CFindService::new(Arc::new(StaticCFindSink::new(
+        vec![match_bytes],
+    )))));
     device.add_application_entity(scp_ae);
 
     let server = tokio::spawn(async move {
@@ -55,7 +56,8 @@ async fn find_roundtrip() {
 
     let mut scu_ae = ApplicationEntity::new("FINDSCU").initiator(true);
     let mut find_cap = TransferCapability::query_retrieve_find_scu(STUDY_ROOT_FIND);
-    find_cap.transfer_syntaxes = vec![dicom_dictionary_std::uids::IMPLICIT_VR_LITTLE_ENDIAN.to_string()];
+    find_cap.transfer_syntaxes =
+        vec![dicom_dictionary_std::uids::IMPLICIT_VR_LITTLE_ENDIAN.to_string()];
     scu_ae.add_scu_capability(find_cap);
 
     let matches = scu_ae

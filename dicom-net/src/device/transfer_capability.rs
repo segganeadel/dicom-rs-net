@@ -27,11 +27,7 @@ pub struct TransferCapability {
 
 impl TransferCapability {
     /// Creates a new transfer capability.
-    pub fn new(
-        sop_class: impl Into<String>,
-        role: Role,
-        transfer_syntaxes: Vec<String>,
-    ) -> Self {
+    pub fn new(sop_class: impl Into<String>, role: Role, transfer_syntaxes: Vec<String>) -> Self {
         Self {
             sop_class: sop_class.into(),
             role,

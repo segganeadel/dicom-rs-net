@@ -104,7 +104,11 @@ fn build_qr_rsp(
     counts: Option<SubOperationCounts>,
 ) -> Result<Vec<u8>> {
     let mut elements = vec![
-        DataElement::new(tags::COMMAND_FIELD, VR::US, dicom_value!(U16, [command_field])),
+        DataElement::new(
+            tags::COMMAND_FIELD,
+            VR::US,
+            dicom_value!(U16, [command_field]),
+        ),
         DataElement::new(
             tags::MESSAGE_ID_BEING_RESPONDED_TO,
             VR::US,

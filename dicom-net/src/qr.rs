@@ -16,17 +16,6 @@ pub enum QueryRetrieveLevel {
 }
 
 impl QueryRetrieveLevel {
-    /// Parses a level from the `QueryRetrieveLevel` attribute value.
-    pub fn from_str(s: &str) -> Option<Self> {
-        match s.trim_end_matches([' ', '\0']) {
-            "PATIENT" => Some(Self::Patient),
-            "STUDY" => Some(Self::Study),
-            "SERIES" => Some(Self::Series),
-            "IMAGE" => Some(Self::Image),
-            _ => None,
-        }
-    }
-
     /// Returns the DICOM CS value for this level.
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -45,6 +34,20 @@ impl QueryRetrieveLevel {
     /// Returns whether this level is allowed for Study Root Q/R.
     pub fn is_study_root(self) -> bool {
         matches!(self, Self::Study | Self::Series | Self::Image)
+    }
+}
+
+impl std::str::FromStr for QueryRetrieveLevel {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim_end_matches([' ', '\0']) {
+            "PATIENT" => Ok(Self::Patient),
+            "STUDY" => Ok(Self::Study),
+            "SERIES" => Ok(Self::Series),
+            "IMAGE" => Ok(Self::Image),
+            _ => Err(()),
+        }
     }
 }
 

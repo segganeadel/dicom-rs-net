@@ -8,9 +8,9 @@ use crate::dimse::rsp::parse_response;
 use crate::error::{Error, Result};
 
 enum ScuStream {
-    Plain(AsyncClientAssociation<tokio::net::TcpStream>),
+    Plain(Box<AsyncClientAssociation<tokio::net::TcpStream>>),
     #[cfg(feature = "tls")]
-    Tls(AsyncClientAssociation<dicom_ul::association::client::AsyncTlsStream>),
+    Tls(Box<AsyncClientAssociation<dicom_ul::association::client::AsyncTlsStream>>),
 }
 
 /// An established DICOM association from the SCU perspective.
@@ -39,7 +39,7 @@ macro_rules! with_inner {
 impl ScuAssociation {
     pub(crate) fn new(inner: AsyncClientAssociation<tokio::net::TcpStream>) -> Self {
         Self {
-            stream: ScuStream::Plain(inner),
+            stream: ScuStream::Plain(Box::new(inner)),
             next_message_id: 1,
         }
     }
@@ -49,7 +49,7 @@ impl ScuAssociation {
         inner: AsyncClientAssociation<dicom_ul::association::client::AsyncTlsStream>,
     ) -> Self {
         Self {
-            stream: ScuStream::Tls(inner),
+            stream: ScuStream::Tls(Box::new(inner)),
             next_message_id: 1,
         }
     }

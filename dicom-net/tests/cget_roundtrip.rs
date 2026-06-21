@@ -35,9 +35,7 @@ fn write_test_file(path: &std::path::Path) {
         .transfer_syntax(ts.uid())
         .build()
         .unwrap();
-    obj.with_exact_meta(file_meta)
-        .write_to_file(path)
-        .unwrap();
+    obj.with_exact_meta(file_meta).write_to_file(path).unwrap();
 }
 
 fn build_image_get_identifier() -> Vec<u8> {
@@ -93,9 +91,7 @@ async fn cget_roundtrip() {
     scu_ae.add_scu_capability(TransferCapability::query_retrieve_get_scu(STUDY_ROOT_GET));
     scu_ae.add_scu_capability(TransferCapability::storage_scu(
         MR_IMAGE_STORAGE,
-        vec![
-            dicom_dictionary_std::uids::IMPLICIT_VR_LITTLE_ENDIAN.to_string(),
-        ],
+        vec![dicom_dictionary_std::uids::IMPLICIT_VR_LITTLE_ENDIAN.to_string()],
     ));
 
     let counts = scu_ae

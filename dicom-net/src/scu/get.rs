@@ -4,7 +4,7 @@ use dicom_ul::pdu::{PDataValueType, Pdu};
 
 use crate::dimse::parse::{command_field_raw, parse_command};
 use crate::dimse::request::build_cget_rq;
-use crate::dimse::response::{build_cstore_rsp, SubOperationCounts};
+use crate::dimse::response::{SubOperationCounts, build_cstore_rsp};
 use crate::dimse::rsp::{ensure_success, parse_response};
 use crate::dimse::{CommandField, Dimse};
 use crate::error::{Error, Result};
@@ -30,7 +30,11 @@ impl ScuAssociation {
         loop {
             match self.receive_cget_event().await? {
                 CGetEvent::Pending => {}
-                CGetEvent::CStore { pc_id, command, data } => {
+                CGetEvent::CStore {
+                    pc_id,
+                    command,
+                    data,
+                } => {
                     let sop_class = command.affected_sop_class_uid.as_deref().unwrap_or("");
                     let sop_instance = command.affected_sop_instance_uid.as_deref().unwrap_or("");
                     let rsp = build_cstore_rsp(

@@ -14,11 +14,11 @@ use crate::scu::association::ScuAssociation;
 impl ScuAssociation {
     /// Performs C-FIND and collects all match datasets.
     pub async fn find(&mut self, identifier: &[u8]) -> Result<Vec<Vec<u8>>> {
-        let pc = self
-            .find_context(STUDY_ROOT_FIND)
-            .ok_or_else(|| Error::NoPresentationContext {
-                sop_class: STUDY_ROOT_FIND.to_string(),
-            })?;
+        let pc =
+            self.find_context(STUDY_ROOT_FIND)
+                .ok_or_else(|| Error::NoPresentationContext {
+                    sop_class: STUDY_ROOT_FIND.to_string(),
+                })?;
 
         let message_id = self.next_message_id();
         let cmd = build_cfind_rq(STUDY_ROOT_FIND, message_id)?;

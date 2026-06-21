@@ -13,7 +13,7 @@ use crate::device::config::AssociationConfig;
 use crate::error::Result;
 use crate::service::ServiceRegistry;
 
-pub use application_entity::{normalize_ae_title, ApplicationEntity};
+pub use application_entity::{ApplicationEntity, normalize_ae_title};
 pub use config::AssociationConfig as DeviceAssociationConfig;
 pub use connection::Connection;
 pub use host::Device;
@@ -30,6 +30,7 @@ pub struct DeviceBuilder {
     services: ServiceRegistry,
 }
 
+#[allow(deprecated)]
 impl DeviceBuilder {
     /// Creates a new device builder with default settings.
     pub fn new() -> Self {
@@ -112,9 +113,9 @@ impl DeviceBuilder {
 
     /// Builds a [`Device`] with a single connection and application entity.
     pub fn build(self) -> Device {
-        let bind_addr = self.bind_addr.unwrap_or_else(|| {
-            SocketAddr::from(([0, 0, 0, 0], 11111))
-        });
+        let bind_addr = self
+            .bind_addr
+            .unwrap_or_else(|| SocketAddr::from(([0, 0, 0, 0], 11111)));
 
         let mut conn = Connection::new()
             .port(bind_addr.port())
@@ -156,6 +157,7 @@ impl DeviceBuilder {
     }
 }
 
+#[allow(deprecated)]
 impl Default for DeviceBuilder {
     fn default() -> Self {
         Self::new()

@@ -5,8 +5,8 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 
-use crate::association::CRetrieveSink;
 use crate::association::AssociationContext;
+use crate::association::CRetrieveSink;
 use crate::dimse::DimseMessage;
 use crate::error::Result;
 use crate::qr::{STUDY_ROOT_GET, STUDY_ROOT_MOVE};

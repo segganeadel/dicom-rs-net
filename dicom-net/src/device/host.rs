@@ -15,7 +15,7 @@ use tokio::sync::{Mutex, Semaphore};
 use tracing::{error, info};
 
 use crate::association::handle_association;
-use crate::device::application_entity::{normalize_ae_title, ApplicationEntity};
+use crate::device::application_entity::{ApplicationEntity, normalize_ae_title};
 use crate::device::connection::Connection;
 use crate::error::{Error, Result};
 
@@ -169,10 +169,7 @@ impl Device {
             tasks.push(handle);
         }
 
-        *runtime = Some(DeviceRuntime {
-            shutdown_tx,
-            tasks,
-        });
+        *runtime = Some(DeviceRuntime { shutdown_tx, tasks });
 
         Ok(())
     }
@@ -228,12 +225,9 @@ async fn handle_incoming_tls(
             message: "TLS server config missing".to_string(),
         })?;
     let acceptor = TlsAcceptor::from(tls_config.clone());
-    let tls_stream = acceptor
-        .accept(socket)
-        .await
-        .map_err(|source| Error::Io {
-            source: std::io::Error::new(std::io::ErrorKind::Other, source.to_string()),
-        })?;
+    let tls_stream = acceptor.accept(socket).await.map_err(|source| Error::Io {
+        source: std::io::Error::other(source.to_string()),
+    })?;
     handle_incoming_plain(device, conn_index, conn, tls_stream, peer, None).await
 }
 
@@ -248,8 +242,9 @@ async fn handle_incoming_plain<S>(
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
 {
-    let mut read_buffer =
-        read_buffer.unwrap_or_else(|| BytesMut::with_capacity((conn.max_pdu_length as usize).min(64 * 1024) + 6));
+    let mut read_buffer = read_buffer.unwrap_or_else(|| {
+        BytesMut::with_capacity((conn.max_pdu_length as usize).min(64 * 1024) + 6)
+    });
 
     let pdu = read_pdu_from_wire_async(
         &mut socket,
@@ -292,9 +287,11 @@ where
         }
     };
 
-    let ae = device.find_ae(&called_ae).ok_or_else(|| Error::InvalidCommand {
-        message: format!("unknown called AE title: {called_ae}"),
-    })?;
+    let ae = device
+        .find_ae(&called_ae)
+        .ok_or_else(|| Error::InvalidCommand {
+            message: format!("unknown called AE title: {called_ae}"),
+        })?;
 
     if !ae.acceptor {
         reject_association(
@@ -369,10 +366,7 @@ fn bind_listener(conn: &Connection) -> Result<TcpListener> {
     TcpListener::from_std(socket.into()).map_err(|source| Error::Io { source })
 }
 
-async fn reject_association<S>(
-    socket: &mut S,
-    reason: AssociationRJServiceUserReason,
-) -> Result<()>
+async fn reject_association<S>(socket: &mut S, reason: AssociationRJServiceUserReason) -> Result<()>
 where
     S: tokio::io::AsyncWrite + Unpin,
 {

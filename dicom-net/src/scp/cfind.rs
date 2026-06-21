@@ -3,8 +3,8 @@
 use std::sync::Arc;
 
 use async_trait::async_trait;
-use dicom_object::InMemDicomObject;
 use dicom_encoding::TransferSyntaxIndex;
+use dicom_object::InMemDicomObject;
 use dicom_transfer_syntax_registry::TransferSyntaxRegistry;
 
 use crate::association::AssociationContext;
@@ -50,9 +50,7 @@ impl CFindService {
         transfer_syntax: &str,
     ) -> Result<Vec<Vec<u8>>> {
         let level = parse_level(identifier, transfer_syntax)?;
-        self.sink
-            .find(identifier, transfer_syntax, level)
-            .await
+        self.sink.find(identifier, transfer_syntax, level).await
     }
 }
 
@@ -76,11 +74,11 @@ impl DicomService for CFindService {
 }
 
 fn parse_level(identifier: &[u8], transfer_syntax: &str) -> Result<QueryRetrieveLevel> {
-    let ts = TransferSyntaxRegistry.get(transfer_syntax).ok_or_else(|| {
-        Error::InvalidCommand {
+    let ts = TransferSyntaxRegistry
+        .get(transfer_syntax)
+        .ok_or_else(|| Error::InvalidCommand {
             message: format!("unknown transfer syntax {transfer_syntax}"),
-        }
-    })?;
+        })?;
     let obj = InMemDicomObject::read_dataset_with_ts(identifier, ts).map_err(|e| {
         Error::InvalidCommand {
             message: e.to_string(),
@@ -95,7 +93,7 @@ fn parse_level(identifier: &[u8], transfer_syntax: &str) -> Result<QueryRetrieve
         .map_err(|_| Error::InvalidCommand {
             message: "QueryRetrieveLevel is not a string".to_string(),
         })?;
-    QueryRetrieveLevel::from_str(&level_str).ok_or_else(|| Error::InvalidCommand {
+    level_str.parse().map_err(|_| Error::InvalidCommand {
         message: format!("unsupported QueryRetrieveLevel: {level_str}"),
     })
 }

@@ -1,21 +1,22 @@
 //! DIMSE request handling loop for an established association.
 
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use dicom_ul::association::Association;
 use dicom_ul::association::server::AsyncServerAssociation;
 use dicom_ul::pdu::{PDataValue, PDataValueType, Pdu};
 use tracing::{debug, info, instrument, warn};
 
-use crate::association::retrieve::{run_cget_subops, run_cmove_subops};
 use crate::association::AssociationContext;
 use crate::association::DatasetReader;
+use crate::association::retrieve::{run_cget_subops, run_cmove_subops};
 use crate::dimse::{Dimse, DimseMessage, parse::parse_command, response};
 use crate::error::{Error, Result};
 use crate::service::ServiceRegistry;
 use crate::status::Status;
 
+#[allow(clippy::enum_variant_names)]
 enum PendingOperation {
     CStore(DimseMessage),
     CFind(DimseMessage),
@@ -65,14 +66,8 @@ where
                         if data.is_empty() {
                             continue;
                         }
-                        if let Err(e) = handle_pdata(
-                            &mut association,
-                            &services,
-                            &ctx,
-                            &mut state,
-                            data,
-                        )
-                        .await
+                        if let Err(e) =
+                            handle_pdata(&mut association, &services, &ctx, &mut state, data).await
                         {
                             warn!("DIMSE handling error: {e}");
                         }
@@ -305,11 +300,7 @@ where
         send_command_response(
             association,
             pc_id,
-            response::build_cmove_rsp(
-                command.message_id,
-                Status::MOVE_DESTINATION_UNKNOWN,
-                None,
-            )?,
+            response::build_cmove_rsp(command.message_id, Status::MOVE_DESTINATION_UNKNOWN, None)?,
         )
         .await?;
         return Ok(());
@@ -424,15 +415,9 @@ where
     )
     .await?;
 
-    let counts = run_cget_subops(
-        association,
-        &instances,
-        command.message_id,
-        None,
-        None,
-    )
-    .await
-    .unwrap_or_default();
+    let counts = run_cget_subops(association, &instances, command.message_id, None, None)
+        .await
+        .unwrap_or_default();
 
     tracing::info!(
         target: "dicom_net.metrics",

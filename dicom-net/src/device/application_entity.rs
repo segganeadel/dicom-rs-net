@@ -15,7 +15,10 @@ use crate::dimse::response::SubOperationCounts;
 use crate::error::{Error, Result};
 use crate::qr::{STUDY_ROOT_FIND, STUDY_ROOT_GET, STUDY_ROOT_MOVE};
 use crate::scp::{CFindService, CGetService, CMoveService, CStoreService};
-use crate::scu::{DicomFile, ScuAssociation, StoreOptions, build_study_find_identifier, presentation_context_pairs, scan_files};
+use crate::scu::{
+    DicomFile, ScuAssociation, StoreOptions, build_study_find_identifier,
+    presentation_context_pairs, scan_files,
+};
 use crate::service::{DicomService, ServiceRegistry};
 
 /// A DICOM application entity with transfer capabilities and DIMSE services.
@@ -396,9 +399,7 @@ impl ApplicationEntity {
     ) -> Result<SubOperationCounts> {
         let options = self.build_move_options(conn);
         let mut assoc = self.establish_scu(conn, options, remote).await?;
-        let counts = assoc
-            .move_instances(identifier, move_destination)
-            .await?;
+        let counts = assoc.move_instances(identifier, move_destination).await?;
         assoc.release().await?;
         Ok(counts)
     }
@@ -427,11 +428,8 @@ impl ApplicationEntity {
     ) -> Result<usize> {
         let store_options = options.clone();
         let mut files = scan_files(paths)?;
-        let client_options =
-            self.build_store_options(conn, &files, store_options.never_transcode);
-        let mut assoc = self
-            .establish_scu(conn, client_options, remote)
-            .await?;
+        let client_options = self.build_store_options(conn, &files, store_options.never_transcode);
+        let mut assoc = self.establish_scu(conn, client_options, remote).await?;
         let sent = assoc.store_files(&mut files, &store_options).await?;
         assoc.release().await?;
         Ok(sent)
