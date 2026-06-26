@@ -152,17 +152,19 @@ impl ScuAssociation {
 
         let chunks: Vec<_> = data.chunks(max_chunk).collect();
         let last_idx = chunks.len() - 1;
-        let mut pdvs = Vec::with_capacity(chunks.len());
 
         for (i, chunk) in chunks.into_iter().enumerate() {
-            pdvs.push(PDataValue {
-                presentation_context_id: pc_id,
-                value_type: PDataValueType::Data,
-                is_last: i == last_idx,
-                data: chunk.to_vec(),
-            });
+            self.send_pdu(Pdu::PData {
+                data: vec![PDataValue {
+                    presentation_context_id: pc_id,
+                    value_type: PDataValueType::Data,
+                    is_last: i == last_idx,
+                    data: chunk.to_vec(),
+                }],
+            })
+            .await?;
         }
 
-        self.send_pdu(Pdu::PData { data: pdvs }).await
+        Ok(())
     }
 }
