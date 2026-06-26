@@ -11,8 +11,9 @@ This repository hosts **`dicom-net`**, a crate that sits above [`dicom-ul`](http
 
 ## Status
 
-Early alpha — SCP and SCU (C-ECHO, C-STORE with transcoding) are functional. APIs are unstable.
-See [`docs/`](docs/) for architecture, roadmap, and [interop testing](docs/INTEROP.md).
+Phases 0–5 and Phase 6a (PACS integration) are complete. See [`docs/ROADMAP.md`](docs/ROADMAP.md) for current status, cross-repo phase map, and next steps (Phase 6b interop CI, API 0.2).
+
+See also [`docs/`](docs/) for architecture and [interop testing](docs/INTEROP.md).
 
 ## Tools
 
@@ -20,6 +21,9 @@ See [`docs/`](docs/) for architecture, roadmap, and [interop testing](docs/INTER
 |--------|-------------|
 | `storescp` | C-STORE SCP (receive DICOM files) |
 | `storescu` | C-STORE SCU (send DICOM files) |
+| `findscu` | Study Root C-FIND SCU |
+| `movescu` | Study Root C-MOVE SCU |
+| `getscu` | Study Root C-GET SCU |
 
 ## Workspace layout
 

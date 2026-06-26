@@ -36,3 +36,30 @@ jobs:
       - name: cargo test
         working-directory: dicom-rs-net
         run: cargo test --all-features
+
+  interop:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout dicom-rs-net
+        uses: actions/checkout@v5
+        with:
+          path: dicom-rs-net
+
+      - name: Checkout dicom-rs
+        uses: actions/checkout@v5
+        with:
+          repository: Enet4/dicom-rs
+          path: dicom-rs
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install dcmtk
+        run: sudo apt-get update && sudo apt-get install -y dcmtk
+
+      - name: Interop tests
+        working-directory: dicom-rs-net
+        env:
+          DICOM_NET_INTEROP: "1"
+        run: cargo test -p dicom-net --test interop -- --ignored
