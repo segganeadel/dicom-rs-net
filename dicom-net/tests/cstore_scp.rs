@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use dicom_core::{DataElement, VR, dicom_value};
 use dicom_dictionary_std::{tags, uids::MR_IMAGE_STORAGE};
-use dicom_net::device::DeviceBuilder;
+use dicom_net::device::{ApplicationEntity, Connection, Device};
 use dicom_net::scp::{CEchoService, CStoreService, FileCStoreSink};
 use dicom_object::{InMemDicomObject, OpenFileOptions, StandardDataDictionary};
 use dicom_transfer_syntax_registry::entries::IMPLICIT_VR_LITTLE_ENDIAN;
@@ -77,14 +77,21 @@ async fn cstore_scp_receives_via_raw_ul_pdus() {
     let server = {
         let output_dir = output_dir.path().to_path_buf();
         tokio::spawn(async move {
-            let sink = FileCStoreSink::new(output_dir);
-            let _ = DeviceBuilder::new()
-                .ae_title("TESTSCP")
-                .bind(addr)
-                .register_service(Arc::new(CEchoService::new()))
-                .register_cstore(Arc::new(CStoreService::new(sink)))
-                .run()
-                .await;
+            let conn = Connection::new().port(addr.port());
+            let mut device = Device::new();
+            let conn_index = device.add_connection(conn);
+
+            let mut ae = ApplicationEntity::new("TESTSCP")
+                .acceptor(true)
+                .add_connection(conn_index);
+            ae.add_default_storage_capabilities();
+            ae.register_service(Arc::new(CEchoService::new()));
+            ae.register_cstore(Arc::new(CStoreService::new(Arc::new(FileCStoreSink::new(
+                output_dir,
+            )))));
+            device.add_application_entity(ae);
+
+            let _ = Arc::new(device).bind_connections().await;
         })
     };
 

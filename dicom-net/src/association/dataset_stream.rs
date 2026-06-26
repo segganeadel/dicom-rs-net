@@ -2,10 +2,18 @@
 
 use std::collections::VecDeque;
 
+use async_trait::async_trait;
 use dicom_ul::association::server::AsyncServerAssociation;
 use dicom_ul::pdu::{PDataValueType, Pdu};
 
 use crate::error::{Error, Result};
+
+/// Object-safe async byte stream for incoming C-STORE datasets.
+#[async_trait]
+pub trait DatasetStream: Send {
+    /// Reads up to `buf.len()` bytes from the dataset stream.
+    async fn read(&mut self, buf: &mut [u8]) -> Result<usize>;
+}
 
 /// Reads C-STORE dataset bytes from P-DATA PDVs (Data type only).
 pub struct DatasetReader<'a, S> {
@@ -93,5 +101,15 @@ impl<'a, S> DatasetReader<'a, S> {
             }
         }
         Ok(())
+    }
+}
+
+#[async_trait]
+impl<S> DatasetStream for DatasetReader<'_, S>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send,
+{
+    async fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        DatasetReader::read(self, buf).await
     }
 }

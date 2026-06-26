@@ -10,8 +10,7 @@ use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
 use tracing::info;
 
-use crate::association::AssociationContext;
-use crate::association::DatasetReader;
+use crate::association::{AssociationContext, DatasetReader, DatasetStream};
 use crate::dimse::DimseMessage;
 use crate::error::{Error, Result};
 use crate::service::DicomService;
@@ -22,20 +21,18 @@ use crate::transfer::STORAGE_ABSTRACT_SYNTAXES;
 #[async_trait]
 pub trait CStoreSink: Send + Sync {
     /// Streams the dataset to storage.
-    async fn store<S>(
+    async fn store(
         &self,
         command: &DimseMessage,
         transfer_syntax: &str,
-        dataset: &mut DatasetReader<'_, S>,
+        dataset: &mut dyn DatasetStream,
         ctx: &AssociationContext,
-    ) -> Result<()>
-    where
-        S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send;
+    ) -> Result<()>;
 }
 
-/// C-STORE SCP service delegating storage to a [`FileCStoreSink`].
+/// C-STORE SCP service delegating storage to a [`CStoreSink`].
 pub struct CStoreService {
-    sink: Arc<FileCStoreSink>,
+    sink: Arc<dyn CStoreSink>,
     promiscuous: bool,
 }
 
@@ -49,17 +46,17 @@ impl std::fmt::Debug for CStoreService {
 
 impl CStoreService {
     /// Creates a service accepting the default storage SOP class list.
-    pub fn new(sink: FileCStoreSink) -> Self {
+    pub fn new(sink: Arc<dyn CStoreSink>) -> Self {
         Self {
-            sink: Arc::new(sink),
+            sink,
             promiscuous: false,
         }
     }
 
     /// Creates a promiscuous service accepting any storage SOP class (`"*"`).
-    pub fn promiscuous(sink: FileCStoreSink) -> Self {
+    pub fn promiscuous(sink: Arc<dyn CStoreSink>) -> Self {
         Self {
-            sink: Arc::new(sink),
+            sink,
             promiscuous: true,
         }
     }
@@ -175,16 +172,13 @@ impl FileCStoreSink {
 
 #[async_trait]
 impl CStoreSink for FileCStoreSink {
-    async fn store<S>(
+    async fn store(
         &self,
         command: &DimseMessage,
         transfer_syntax: &str,
-        dataset: &mut DatasetReader<'_, S>,
+        dataset: &mut dyn DatasetStream,
         _ctx: &AssociationContext,
-    ) -> Result<()>
-    where
-        S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send,
-    {
+    ) -> Result<()> {
         let sop_class_uid =
             command
                 .affected_sop_class_uid

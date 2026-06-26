@@ -7,7 +7,7 @@ mod retrieve;
 use dicom_ul::association::server::AsyncServerAssociation;
 use dicom_ul::pdu::PresentationContextNegotiated;
 
-pub use dataset_stream::DatasetReader;
+pub use dataset_stream::{DatasetReader, DatasetStream};
 pub use dimse_loop::handle_association;
 pub use retrieve::{
     CRetrieveSink, FileRetrieveSink, InstanceLocator, RetrieveSource, run_cget_subops,

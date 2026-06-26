@@ -64,7 +64,7 @@ async fn cstore_roundtrip_via_client() {
         .add_connection(conn_index);
     ae.add_default_storage_capabilities();
     ae.register_service(Arc::new(CEchoService::new()));
-    ae.register_cstore(Arc::new(CStoreService::new(FileCStoreSink::new(out_path))));
+    ae.register_cstore(Arc::new(CStoreService::new(Arc::new(FileCStoreSink::new(out_path)))));
     device.add_application_entity(ae);
 
     let server = tokio::spawn(async move {

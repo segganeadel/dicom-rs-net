@@ -1,4 +1,4 @@
-﻿# dicom-net
+# dicom-net
 
 DIMSE networking layer for DICOM-rs.
 
@@ -24,7 +24,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .add_connection(conn_index);
     ae.add_default_storage_capabilities();
     ae.register_service(Arc::new(CEchoService::new()));
-    ae.register_cstore(Arc::new(CStoreService::new(FileCStoreSink::new("./received"))));
+    ae.register_cstore(Arc::new(CStoreService::new(Arc::new(FileCStoreSink::new("./received")))));
     device.add_application_entity(ae);
 
     Arc::new(device).bind_connections().await?;

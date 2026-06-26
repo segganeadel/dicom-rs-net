@@ -78,9 +78,9 @@ async fn cmove_roundtrip() {
         .acceptor(true)
         .add_connection(conn_index);
     dest_ae.add_default_storage_capabilities();
-    dest_ae.register_cstore(Arc::new(CStoreService::new(FileCStoreSink::new(
+    dest_ae.register_cstore(Arc::new(CStoreService::new(Arc::new(FileCStoreSink::new(
         out_path.clone(),
-    ))));
+    )))));
     device.add_application_entity(dest_ae);
 
     let mut destinations = HashMap::new();

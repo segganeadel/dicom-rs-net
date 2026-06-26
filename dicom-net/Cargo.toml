@@ -1,6 +1,6 @@
 [package]
 name = "dicom-net"
-version = "0.1.0"
+version = "0.2.0"
 authors = ["Adel <you@example.com>"]
 description = "Production-oriented DIMSE networking layer for DICOM-rs"
 edition.workspace = true

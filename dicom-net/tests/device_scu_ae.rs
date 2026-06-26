@@ -65,7 +65,7 @@ async fn application_entity_scu_echo_and_store() {
         .add_connection(conn_index);
     scp_ae.add_default_storage_capabilities();
     scp_ae.register_service(Arc::new(CEchoService::new()));
-    scp_ae.register_cstore(Arc::new(CStoreService::new(FileCStoreSink::new(out_path))));
+    scp_ae.register_cstore(Arc::new(CStoreService::new(Arc::new(FileCStoreSink::new(out_path)))));
     device.add_application_entity(scp_ae);
 
     let server = tokio::spawn(async move {
