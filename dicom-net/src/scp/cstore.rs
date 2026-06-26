@@ -15,7 +15,7 @@ use crate::dimse::DimseMessage;
 use crate::error::{Error, Result};
 use crate::service::DicomService;
 use crate::status::Status;
-use crate::transfer::STORAGE_ABSTRACT_SYNTAXES;
+use crate::sop_classes::C_STORE_SOP_CLASS_UIDS;
 
 /// Hook for persisting a received C-STORE dataset (dcm4che `BasicCStoreSCP.store()`).
 #[async_trait]
@@ -92,7 +92,7 @@ impl DicomService for CStoreService {
         if self.promiscuous {
             &["*"]
         } else {
-            STORAGE_ABSTRACT_SYNTAXES
+            C_STORE_SOP_CLASS_UIDS
         }
     }
 

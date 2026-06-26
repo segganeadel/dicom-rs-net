@@ -1,6 +1,6 @@
 [package]
 name = "dicom-net"
-version = "0.2.0"
+version = "0.2.1"
 authors = ["Adel <you@example.com>"]
 description = "Production-oriented DIMSE networking layer for DICOM-rs"
 edition.workspace = true
@@ -35,6 +35,7 @@ dicom-dictionary-std = { workspace = true }
 dicom-object = { workspace = true }
 dicom-transfer-syntax-registry = { workspace = true }
 dicom-ul = { workspace = true, features = ["async"] }
+serde_json = "1.0"
 tempfile = "3.10"
 tokio = { workspace = true, features = ["test-util"] }
 rustls-cert-gen = "0.2"

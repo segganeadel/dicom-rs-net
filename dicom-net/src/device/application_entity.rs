@@ -11,6 +11,9 @@ use crate::device::connection::Connection;
 use crate::device::transfer_capability::{
     Role, TransferCapability, default_storage_scp_capabilities, default_transfer_syntaxes,
 };
+use crate::sop_classes::{
+    QUERY_FIND_SOP_CLASS_UIDS, QUERY_GET_SOP_CLASS_UIDS, QUERY_MOVE_SOP_CLASS_UIDS,
+};
 use crate::dimse::response::SubOperationCounts;
 use crate::error::{Error, Result};
 use crate::qr::{STUDY_ROOT_FIND, STUDY_ROOT_GET, STUDY_ROOT_MOVE};
@@ -119,6 +122,27 @@ impl ApplicationEntity {
             .any(|c| c.sop_class == dicom_dictionary_std::uids::VERIFICATION)
         {
             self.add_scp_capability(TransferCapability::verification_scp());
+        }
+    }
+
+    /// Adds SCP capabilities for all dcm4che dictionary Q/R FIND SOP classes.
+    pub fn add_query_find_capabilities(&mut self) {
+        for uid in QUERY_FIND_SOP_CLASS_UIDS {
+            self.add_scp_capability(TransferCapability::query_retrieve_find_scp(*uid));
+        }
+    }
+
+    /// Adds SCP capabilities for all dcm4che dictionary Q/R MOVE SOP classes.
+    pub fn add_query_move_capabilities(&mut self) {
+        for uid in QUERY_MOVE_SOP_CLASS_UIDS {
+            self.add_scp_capability(TransferCapability::query_retrieve_move_scp(*uid));
+        }
+    }
+
+    /// Adds SCP capabilities for all dcm4che dictionary Q/R GET SOP classes.
+    pub fn add_query_get_capabilities(&mut self) {
+        for uid in QUERY_GET_SOP_CLASS_UIDS {
+            self.add_scp_capability(TransferCapability::query_retrieve_get_scp(*uid));
         }
     }
 
@@ -335,7 +359,7 @@ impl ApplicationEntity {
 
     async fn establish_scu(
         &self,
-        conn: &Connection,
+        #[cfg_attr(not(feature = "tls"), allow(unused_variables))] conn: &Connection,
         options: ClientAssociationOptions<'_>,
         remote: &str,
     ) -> Result<ScuAssociation> {

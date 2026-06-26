@@ -110,6 +110,36 @@ let matches = ae.find(&conn, "FINDSCP@127.0.0.1:11111", None).await?;
 - `transcode` (default) — C-STORE SCU transcoding via `dicom-pixeldata`
 - `tls` — TLS on `Connection` (`tls_server_config` / `tls_client_config`) via `dicom-ul/async-tls`
 
+## SOP class dictionary
+
+Default storage and Q/R capabilities are generated from the [dcm4che archive UI dictionary](https://github.com/dcm4che/dcm4chee-arc-light/blob/cd496ad7080b22f20a3f15ba73b0b8aa6c0059dc/dcm4chee-arc-ui2/src/app/constants/dcm4che-dict-cuids.js) (~375 UIDs), classified by context (`Storage`, `QueryFind`, `QueryMove`, `Print`, etc.).
+
+- Source: [`data/dcm4che-dict-cuids.js`](data/dcm4che-dict-cuids.js)
+- Generated Rust: [`src/sop_classes.rs`](src/sop_classes.rs)
+- Classification audit: [`data/sop-classes-classified.json`](data/sop-classes-classified.json)
+
+Regenerate after updating the dictionary:
+
+```bash
+cargo run --manifest-path dicom-net/scripts/Cargo.toml
+```
+
+C-STORE SCP negotiation uses `C_STORE_SOP_CLASS_UIDS` (storage + media storage directory). Optional helpers: `ApplicationEntity::add_query_find_capabilities()`, `add_query_move_capabilities()`, `add_query_get_capabilities()`.
+
 ## Documentation
 
 Repository-level docs live in the parent `docs/` directory, including [`STABILITY.md`](../docs/STABILITY.md) and [`ROADMAP.md`](../docs/ROADMAP.md).
+
+### Windows: firewall prompts during `cargo test`
+
+Integration tests start TCP listeners on `127.0.0.1`. Cargo builds each test as a separate executable with a content hash in the filename (for example `cstore_scp-dc2f8e4f05bfb1c2.exe`), so Windows Firewall may prompt on every rebuild. If the dialog is not accepted in time, tests can time out or fail with connection errors.
+
+**Fix (run once, elevated PowerShell):**
+
+```powershell
+cd dicom-rs-net
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\windows-allow-test-firewall.ps1
+```
+
+This adds an inbound allow rule for TCP on `127.0.0.1` only. Alternatively, click **Allow** when prompted, or turn off *Notify me when Windows Firewall blocks a new app* under Windows Security → Firewall → settings.

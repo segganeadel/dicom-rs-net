@@ -164,7 +164,7 @@ fn default_qr_transfer_syntaxes() -> Vec<String> {
     ]
 }
 
-/// Builds default storage SCP capabilities from [`ABSTRACT_SYNTAXES`].
+/// Builds default storage SCP capabilities from [`ABSTRACT_SYNTAXES`](crate::transfer::ABSTRACT_SYNTAXES).
 pub fn default_storage_scp_capabilities(uncompressed_only: bool) -> Vec<TransferCapability> {
     TransferCapability::scp_from_static_list(ABSTRACT_SYNTAXES, uncompressed_only)
 }

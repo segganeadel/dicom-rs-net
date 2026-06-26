@@ -31,6 +31,8 @@ pub mod qr;
 pub mod scp;
 pub mod scu;
 pub mod service;
+/// SOP class UIDs from the dcm4che dictionary, grouped by context.
+pub mod sop_classes;
 pub mod status;
 pub mod transfer;
 
