@@ -1,5 +1,5 @@
 [workspace]
-members = ["dicom-net", "storescp", "storescu"]
+members = ["dicom-net", "storescp", "storescu", "findscu", "movescu", "getscu"]
 exclude = ["vendor/dicom-ul"]
 resolver = "3"
 

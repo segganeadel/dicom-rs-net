@@ -66,7 +66,7 @@ async fn main() {
         std::process::exit(1);
     }
 
-    let sink = FileCStoreSink::new(&app.output_dir);
+    let sink = Arc::new(FileCStoreSink::new(&app.output_dir));
     let cstore = if app.promiscuous {
         Arc::new(CStoreService::promiscuous(sink))
     } else {

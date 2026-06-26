@@ -1,0 +1,23 @@
+[package]
+name = "getscu"
+version = "0.1.0"
+description = "DICOM C-GET SCU using dicom-net"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[[bin]]
+name = "getscu"
+path = "src/main.rs"
+
+[dependencies]
+clap = { workspace = true }
+dicom-core = { workspace = true }
+dicom-dictionary-std = { workspace = true }
+dicom-net = { path = "../dicom-net" }
+dicom-object = { workspace = true }
+dicom-transfer-syntax-registry = { workspace = true }
+tokio = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }
