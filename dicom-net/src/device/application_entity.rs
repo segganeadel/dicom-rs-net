@@ -6,7 +6,9 @@ use std::sync::Arc;
 
 use dicom_ul::association::client::ClientAssociationOptions;
 use dicom_ul::association::server::{AcceptAny, DefaultNegotiation, ServerAssociationOptions};
+use dicom_ul::association::Association;
 
+use crate::device::association_registry::{AssociationGuard, AssociationRegistry};
 use crate::device::connection::Connection;
 use crate::device::transfer_capability::{
     Role, TransferCapability, default_storage_scp_capabilities, default_transfer_syntaxes,
@@ -27,6 +29,8 @@ use crate::service::{DicomService, ServiceRegistry};
 /// A DICOM application entity with transfer capabilities and DIMSE services.
 #[derive(Debug, Clone)]
 pub struct ApplicationEntity {
+    /// Stable config id for this AE.
+    pub ae_id: String,
     /// Application entity title.
     pub ae_title: String,
     /// Accepts inbound associations on linked connections.
@@ -45,14 +49,19 @@ pub struct ApplicationEntity {
     pub connection_indices: Vec<usize>,
     /// Optional allow-list of calling AE titles (SCP access control).
     pub accepted_calling_aets: Option<Vec<String>>,
+    /// Preferred transfer syntax order for negotiation (`dcmPreferredTransferSyntax`).
+    pub preferred_transfer_syntaxes: Vec<String>,
     /// DIMSE services handled by this AE when acting as SCP.
     pub services: ServiceRegistry,
+    /// Shared association registry from the parent device (for SCU tracking).
+    pub association_registry: Option<crate::device::SharedAssociationRegistry>,
 }
 
 impl ApplicationEntity {
     /// Creates a new application entity with the given AE title.
     pub fn new(ae_title: impl Into<String>) -> Self {
         Self {
+            ae_id: String::new(),
             ae_title: ae_title.into(),
             acceptor: false,
             initiator: false,
@@ -62,8 +71,25 @@ impl ApplicationEntity {
             scu_capabilities: Vec::new(),
             connection_indices: Vec::new(),
             accepted_calling_aets: None,
+            preferred_transfer_syntaxes: Vec::new(),
             services: ServiceRegistry::new(),
+            association_registry: None,
         }
+    }
+
+    /// Sets the stable config id for this AE.
+    pub fn ae_id(mut self, ae_id: impl Into<String>) -> Self {
+        self.ae_id = ae_id.into();
+        self
+    }
+
+    /// Attaches the device association registry for outbound SCU tracking.
+    pub fn association_registry(
+        mut self,
+        registry: crate::device::SharedAssociationRegistry,
+    ) -> Self {
+        self.association_registry = Some(registry);
+        self
     }
 
     /// Marks this AE as an association acceptor (SCP).
@@ -99,6 +125,12 @@ impl ApplicationEntity {
     /// Restricts accepted calling AE titles for inbound associations.
     pub fn accepted_calling_aets(mut self, aets: Vec<String>) -> Self {
         self.accepted_calling_aets = Some(aets);
+        self
+    }
+
+    /// Sets preferred transfer syntax order for SCP negotiation.
+    pub fn preferred_transfer_syntaxes(mut self, syntaxes: Vec<String>) -> Self {
+        self.preferred_transfer_syntaxes = syntaxes;
         self
     }
 
@@ -360,6 +392,7 @@ impl ApplicationEntity {
     async fn establish_scu(
         &self,
         #[cfg_attr(not(feature = "tls"), allow(unused_variables))] conn: &Connection,
+        connection_index: usize,
         options: ClientAssociationOptions<'_>,
         remote: &str,
     ) -> Result<ScuAssociation> {
@@ -375,25 +408,69 @@ impl ApplicationEntity {
                 .establish_with_async_tls(remote)
                 .await
                 .map_err(|source| Error::Ul { source })?;
-            return Ok(ScuAssociation::new_tls(inner));
+            let guard = self.track_outbound_scu(
+                conn,
+                connection_index,
+                remote,
+                inner.peer_ae_title(),
+            );
+            return Ok(ScuAssociation::new_tls(inner, guard));
         }
 
         let inner = options
             .establish_with_async(remote)
             .await
             .map_err(|source| Error::Ul { source })?;
-        Ok(ScuAssociation::new(inner))
+        let guard = self.track_outbound_scu(
+            conn,
+            connection_index,
+            remote,
+            inner.peer_ae_title(),
+        );
+        Ok(ScuAssociation::new(inner, guard))
+    }
+
+    fn track_outbound_scu(
+        &self,
+        conn: &Connection,
+        connection_index: usize,
+        remote: &str,
+        remote_ae: &str,
+    ) -> Option<AssociationGuard> {
+        let registry = self.association_registry.as_ref()?;
+        let guard = AssociationRegistry::register_outbound(
+            registry,
+            &self.ae_id,
+            &self.ae_title,
+            remote_ae,
+            &conn.connection_id,
+            connection_index,
+            remote,
+        );
+        registry.set_active(guard.id());
+        Some(guard)
     }
 
     /// Establishes an SCU association for verification.
-    pub async fn connect(&self, conn: &Connection, remote: &str) -> Result<ScuAssociation> {
+    pub async fn connect(
+        &self,
+        conn: &Connection,
+        connection_index: usize,
+        remote: &str,
+    ) -> Result<ScuAssociation> {
         let options = self.build_echo_options(conn);
-        self.establish_scu(conn, options, remote).await
+        self.establish_scu(conn, connection_index, options, remote)
+            .await
     }
 
     /// One-shot C-ECHO against a remote SCP.
-    pub async fn echo(&self, conn: &Connection, remote: &str) -> Result<()> {
-        let mut assoc = self.connect(conn, remote).await?;
+    pub async fn echo(
+        &self,
+        conn: &Connection,
+        connection_index: usize,
+        remote: &str,
+    ) -> Result<()> {
+        let mut assoc = self.connect(conn, connection_index, remote).await?;
         assoc.echo().await?;
         assoc.release().await
     }
@@ -402,12 +479,15 @@ impl ApplicationEntity {
     pub async fn find(
         &self,
         conn: &Connection,
+        connection_index: usize,
         remote: &str,
         patient_id: Option<&str>,
     ) -> Result<Vec<Vec<u8>>> {
         let identifier = build_study_find_identifier(patient_id)?;
         let options = self.build_find_options(conn);
-        let mut assoc = self.establish_scu(conn, options, remote).await?;
+        let mut assoc = self
+            .establish_scu(conn, connection_index, options, remote)
+            .await?;
         let matches = assoc.find(&identifier).await?;
         assoc.release().await?;
         Ok(matches)
@@ -417,12 +497,15 @@ impl ApplicationEntity {
     pub async fn move_instances(
         &self,
         conn: &Connection,
+        connection_index: usize,
         remote: &str,
         identifier: &[u8],
         move_destination: &str,
     ) -> Result<SubOperationCounts> {
         let options = self.build_move_options(conn);
-        let mut assoc = self.establish_scu(conn, options, remote).await?;
+        let mut assoc = self
+            .establish_scu(conn, connection_index, options, remote)
+            .await?;
         let counts = assoc.move_instances(identifier, move_destination).await?;
         assoc.release().await?;
         Ok(counts)
@@ -432,11 +515,14 @@ impl ApplicationEntity {
     pub async fn get_instances(
         &self,
         conn: &Connection,
+        connection_index: usize,
         remote: &str,
         identifier: &[u8],
     ) -> Result<SubOperationCounts> {
         let options = self.build_get_options(conn);
-        let mut assoc = self.establish_scu(conn, options, remote).await?;
+        let mut assoc = self
+            .establish_scu(conn, connection_index, options, remote)
+            .await?;
         let counts = assoc.get_instances(identifier).await?;
         assoc.release().await?;
         Ok(counts)
@@ -446,6 +532,7 @@ impl ApplicationEntity {
     pub async fn store_files(
         &self,
         conn: &Connection,
+        connection_index: usize,
         remote: &str,
         paths: &[PathBuf],
         options: &StoreOptions,
@@ -453,7 +540,9 @@ impl ApplicationEntity {
         let store_options = options.clone();
         let mut files = scan_files(paths)?;
         let client_options = self.build_store_options(conn, &files, store_options.never_transcode);
-        let mut assoc = self.establish_scu(conn, client_options, remote).await?;
+        let mut assoc = self
+            .establish_scu(conn, connection_index, client_options, remote)
+            .await?;
         let sent = assoc.store_files(&mut files, &store_options).await?;
         assoc.release().await?;
         Ok(sent)
@@ -489,7 +578,17 @@ impl ApplicationEntity {
         if set.is_empty() && !self.promiscuous {
             set.extend(default_transfer_syntaxes(self.uncompressed_only));
         }
-        set.into_iter().collect()
+
+        let mut syntaxes: Vec<String> = set.into_iter().collect();
+        if !self.preferred_transfer_syntaxes.is_empty() {
+            syntaxes.sort_by_key(|ts| {
+                self.preferred_transfer_syntaxes
+                    .iter()
+                    .position(|pref| pref == ts)
+                    .unwrap_or(usize::MAX)
+            });
+        }
+        syntaxes
     }
 }
 

@@ -78,7 +78,7 @@ async fn application_entity_scu_echo_and_store() {
     let remote = format!("TESTSCP@{}", addr);
 
     scu_ae
-        .echo(&conn, &remote)
+        .echo(&conn, 0, &remote)
         .await
         .expect("ApplicationEntity::echo should succeed");
 
@@ -90,6 +90,7 @@ async fn application_entity_scu_echo_and_store() {
     let sent = scu_ae
         .store_files(
             &conn,
+            0,
             &remote,
             &[PathBuf::from(input_path)],
             &StoreOptions::default(),

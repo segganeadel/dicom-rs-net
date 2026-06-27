@@ -6,15 +6,54 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use dicom_ul::association::Association;
 use dicom_ul::association::server::AsyncServerAssociation;
 use dicom_ul::pdu::{PDataValue, PDataValueType, Pdu};
+use tokio::sync::watch;
 use tracing::{debug, info, instrument, warn};
 
 use crate::association::AssociationContext;
 use crate::association::DatasetReader;
 use crate::association::retrieve::{run_cget_subops, run_cmove_subops};
+use crate::device::SharedAssociationRegistry;
 use crate::dimse::{Dimse, DimseMessage, parse::parse_command, response};
 use crate::error::{Error, Result};
 use crate::service::ServiceRegistry;
 use crate::status::Status;
+
+/// Tracks an open inbound association for registry updates and drain/force.
+#[derive(Debug, Clone)]
+pub struct AssociationTracker {
+    /// Registry id for this association.
+    pub id: u64,
+    /// Shared device association registry.
+    pub registry: SharedAssociationRegistry,
+    /// Config AE id for the local SCP.
+    pub ae_id: String,
+    /// Config connection id for the listener.
+    pub connection_id: String,
+    /// Index of the listener connection on the device.
+    pub connection_index: usize,
+    cancel_rx: watch::Receiver<bool>,
+}
+
+impl AssociationTracker {
+    /// Creates a tracker for an inbound SCP association.
+    pub fn new(
+        id: u64,
+        registry: SharedAssociationRegistry,
+        ae_id: impl Into<String>,
+        connection_id: impl Into<String>,
+        connection_index: usize,
+        cancel_rx: watch::Receiver<bool>,
+    ) -> Self {
+        Self {
+            id,
+            registry,
+            ae_id: ae_id.into(),
+            connection_id: connection_id.into(),
+            connection_index,
+            cancel_rx,
+        }
+    }
+}
 
 #[allow(clippy::enum_variant_names)]
 enum PendingOperation {
@@ -43,10 +82,11 @@ impl AssociationState {
 }
 
 /// Handles DIMSE traffic on an established server association.
-#[instrument(skip(association, services))]
+#[instrument(skip(association, services, tracker))]
 pub async fn handle_association<S>(
     mut association: AsyncServerAssociation<S>,
     services: Arc<ServiceRegistry>,
+    tracker: AssociationTracker,
 ) -> Result<()>
 where
     S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Unpin + Send + 'static,
@@ -54,11 +94,30 @@ where
     let peer = association.peer_ae_title().to_string();
     info!("Association established with {peer}");
 
-    let ctx = AssociationContext::from_association(&association);
+    let ctx = AssociationContext::from_association(&association, &tracker);
     let mut state = AssociationState::new();
+    let mut cancel_rx = tracker.cancel_rx.clone();
 
     loop {
-        match association.receive().await {
+        if tracker.registry.should_release(tracker.id) {
+            let _ = association.send(&Pdu::ReleaseRP).await;
+            info!("Released draining association with {peer}");
+            break;
+        }
+
+        let pdu = tokio::select! {
+            changed = cancel_rx.changed() => {
+                if changed.is_ok() && *cancel_rx.borrow() {
+                    let _ = association.abort().await;
+                    warn!("Force-aborted association with {peer}");
+                    break;
+                }
+                continue;
+            }
+            result = association.receive() => result,
+        };
+
+        match pdu {
             Ok(pdu) => {
                 debug!("scu ----> scp: {}", pdu.short_description());
                 match pdu {
@@ -66,8 +125,15 @@ where
                         if data.is_empty() {
                             continue;
                         }
-                        if let Err(e) =
-                            handle_pdata(&mut association, &services, &ctx, &mut state, data).await
+                        if let Err(e) = handle_pdata(
+                            &mut association,
+                            &services,
+                            &ctx,
+                            &tracker,
+                            &mut state,
+                            data,
+                        )
+                        .await
                         {
                             warn!("DIMSE handling error: {e}");
                         }
@@ -102,6 +168,7 @@ async fn handle_pdata<S>(
     association: &mut AsyncServerAssociation<S>,
     services: &ServiceRegistry,
     ctx: &AssociationContext,
+    tracker: &AssociationTracker,
     state: &mut AssociationState,
     data: Vec<PDataValue>,
 ) -> Result<()>
@@ -112,10 +179,13 @@ where
         match (data_value.value_type, data_value.is_last) {
             (PDataValueType::Command, is_last_cmd) => {
                 let command = parse_command(&data_value.data, data_value.presentation_context_id)?;
+                let dimse_name = dimse_label(command.dimse);
+                tracker.registry.begin_dimse(tracker.id, dimse_name);
 
                 match command.dimse {
                     Dimse::CEcho => {
                         if !is_last_cmd {
+                            tracker.registry.end_dimse(tracker.id);
                             return Err(Error::InvalidCommand {
                                 message: "fragmented C-ECHO command not supported".to_string(),
                             });
@@ -127,6 +197,7 @@ where
                             response::build_cecho_rsp(command.message_id, status)?,
                         )
                         .await?;
+                        tracker.registry.end_dimse(tracker.id);
                     }
                     Dimse::CStore => {
                         state.pending = Some(PendingOperation::CStore(command));
@@ -154,6 +225,7 @@ where
                         if state.active_message_id == Some(command.message_id) {
                             state.cancelled.store(true, Ordering::SeqCst);
                         }
+                        tracker.registry.end_dimse(tracker.id);
                     }
                 }
             }
@@ -178,18 +250,22 @@ where
                             )
                             .await?;
                             send_cstore_response(association, &command, pc_id, status).await?;
+                            tracker.registry.end_dimse(tracker.id);
                         }
                         PendingOperation::CFind(command) => {
                             process_cfind(association, services, &command, pc_id, &identifier)
                                 .await?;
+                            tracker.registry.end_dimse(tracker.id);
                         }
                         PendingOperation::CMove(command) => {
                             process_cmove(association, services, ctx, &command, pc_id, &identifier)
                                 .await?;
+                            tracker.registry.end_dimse(tracker.id);
                         }
                         PendingOperation::CGet(command) => {
                             process_cget(association, services, ctx, &command, pc_id, &identifier)
                                 .await?;
+                            tracker.registry.end_dimse(tracker.id);
                         }
                     }
                     state.active_message_id = None;
@@ -344,6 +420,10 @@ where
         ctx.called_ae(),
         ctx.calling_ae(),
         command.message_id,
+        ctx.association_registry(),
+        ctx.ae_id(),
+        ctx.connection_id(),
+        ctx.connection_index(),
     )
     .await
     .unwrap_or_default();
@@ -492,6 +572,17 @@ where
         response::build_cstore_rsp(command.message_id, sop_class, sop_instance, status)?,
     )
     .await
+}
+
+fn dimse_label(dimse: Dimse) -> &'static str {
+    match dimse {
+        Dimse::CEcho => "C-ECHO",
+        Dimse::CStore => "C-STORE",
+        Dimse::CFind => "C-FIND",
+        Dimse::CMove => "C-MOVE",
+        Dimse::CGet => "C-GET",
+        Dimse::CCancel => "C-CANCEL",
+    }
 }
 
 fn handle_cecho(services: &ServiceRegistry) -> Result<Status> {

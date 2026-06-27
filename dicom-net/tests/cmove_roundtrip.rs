@@ -108,7 +108,7 @@ async fn cmove_roundtrip() {
 
     let identifier = build_image_move_identifier();
     scu_ae
-        .move_instances(&conn, &format!("QRSCP@{}", addr), &identifier, "DESTSCP")
+        .move_instances(&conn, 0, &format!("QRSCP@{}", addr), &identifier, "DESTSCP")
         .await
         .unwrap();
 

@@ -70,7 +70,7 @@ async fn tls_echo_roundtrip() {
 
     let scu_ae = ApplicationEntity::new("TLSSCU").initiator(true);
     scu_ae
-        .echo(&client_conn, &format!("TLSSCP@{}", addr))
+        .echo(&client_conn, 0, &format!("TLSSCP@{}", addr))
         .await
         .unwrap();
 

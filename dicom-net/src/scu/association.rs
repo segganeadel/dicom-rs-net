@@ -4,6 +4,7 @@ use dicom_ul::association::Association;
 use dicom_ul::association::client::AsyncClientAssociation;
 use dicom_ul::pdu::{PDataValue, PDataValueType, Pdu};
 
+use crate::device::AssociationGuard;
 use crate::dimse::rsp::parse_response;
 use crate::error::{Error, Result};
 
@@ -17,6 +18,7 @@ enum ScuStream {
 pub struct ScuAssociation {
     stream: ScuStream,
     next_message_id: u16,
+    guard: Option<AssociationGuard>,
 }
 
 macro_rules! with_inner {
@@ -37,20 +39,26 @@ macro_rules! with_inner {
 }
 
 impl ScuAssociation {
-    pub(crate) fn new(inner: AsyncClientAssociation<tokio::net::TcpStream>) -> Self {
+    pub(crate) fn new(
+        inner: AsyncClientAssociation<tokio::net::TcpStream>,
+        guard: Option<AssociationGuard>,
+    ) -> Self {
         Self {
             stream: ScuStream::Plain(Box::new(inner)),
             next_message_id: 1,
+            guard,
         }
     }
 
     #[cfg(feature = "tls")]
     pub(crate) fn new_tls(
         inner: AsyncClientAssociation<dicom_ul::association::client::AsyncTlsStream>,
+        guard: Option<AssociationGuard>,
     ) -> Self {
         Self {
             stream: ScuStream::Tls(Box::new(inner)),
             next_message_id: 1,
+            guard,
         }
     }
 
@@ -211,6 +219,7 @@ impl ScuAssociation {
             .await
             .map_err(|source| Error::Ul { source }))?;
         let _ = with_inner!(self, |inner| inner.receive().await);
+        self.guard.take();
         Ok(())
     }
 }

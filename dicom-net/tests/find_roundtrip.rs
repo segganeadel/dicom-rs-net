@@ -61,7 +61,7 @@ async fn find_roundtrip() {
     scu_ae.add_scu_capability(find_cap);
 
     let matches = scu_ae
-        .find(&conn, &format!("FINDSCP@{}", addr), None)
+        .find(&conn, 0, &format!("FINDSCP@{}", addr), None)
         .await
         .unwrap();
 

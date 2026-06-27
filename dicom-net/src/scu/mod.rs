@@ -79,7 +79,7 @@ impl Client {
             .establish_with_async(&addr)
             .await
             .map_err(|source| Error::Ul { source })?;
-        Ok(ScuAssociation::new(inner))
+        Ok(ScuAssociation::new(inner, None))
     }
 
     /// One-shot C-ECHO: connect, echo, release.
@@ -101,7 +101,7 @@ impl Client {
             .establish_with_async(&addr)
             .await
             .map_err(|source| Error::Ul { source })?;
-        Ok((ScuAssociation::new(inner), files))
+        Ok((ScuAssociation::new(inner, None), files))
     }
 
     /// One-shot C-STORE: connect, send all files, release.

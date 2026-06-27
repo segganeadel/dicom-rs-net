@@ -97,6 +97,7 @@ async fn cget_roundtrip() {
     let counts = scu_ae
         .get_instances(
             &conn,
+            0,
             &format!("GETSCP@{}", addr),
             &build_image_get_identifier(),
         )

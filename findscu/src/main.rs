@@ -71,7 +71,7 @@ async fn run(app: App) -> Result<(), Box<dyn std::error::Error>> {
 
     let matches = if let Some(path) = app.identifier_file {
         let bytes = std::fs::read(path)?;
-        let mut assoc = scu.connect(&conn, &app.addr).await?;
+        let mut assoc = scu.connect(&conn, 0, &app.addr).await?;
         let matches = assoc.find(&bytes).await?;
         assoc.release().await?;
         matches
@@ -85,12 +85,12 @@ async fn run(app: App) -> Result<(), Box<dyn std::error::Error>> {
             app.study_instance_uid.as_deref(),
             app.accession_number.as_deref(),
         )?;
-        let mut assoc = scu.connect(&conn, &app.addr).await?;
+        let mut assoc = scu.connect(&conn, 0, &app.addr).await?;
         let matches = assoc.find(&identifier).await?;
         assoc.release().await?;
         matches
     } else {
-        scu.find(&conn, &app.addr, app.patient_id.as_deref()).await?
+        scu.find(&conn, 0, &app.addr, app.patient_id.as_deref()).await?
     };
 
     info!(count = matches.len(), "C-FIND completed");

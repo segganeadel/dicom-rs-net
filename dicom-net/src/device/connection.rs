@@ -8,6 +8,8 @@ use crate::error::{Error, Result};
 /// Network connection parameters for association establishment.
 #[derive(Debug, Clone)]
 pub struct Connection {
+    /// Stable id from configuration (dcm4che `cn`).
+    pub connection_id: String,
     /// Hostname or IP address to bind or connect from.
     pub hostname: String,
     /// TCP port.
@@ -45,6 +47,7 @@ impl Connection {
     /// Creates a connection with default settings (`0.0.0.0:11111`).
     pub fn new() -> Self {
         Self {
+            connection_id: String::new(),
             hostname: "0.0.0.0".to_string(),
             port: 11111,
             max_pdu_length: 16_378,
@@ -60,6 +63,18 @@ impl Connection {
             #[cfg(feature = "tls")]
             tls_server_name: None,
         }
+    }
+
+    /// Sets the stable connection id from configuration.
+    pub fn connection_id(mut self, id: impl Into<String>) -> Self {
+        self.connection_id = id.into();
+        self
+    }
+
+    /// Sets the bind hostname.
+    pub fn hostname(mut self, hostname: impl Into<String>) -> Self {
+        self.hostname = hostname.into();
+        self
     }
 
     /// Sets the TCP port.

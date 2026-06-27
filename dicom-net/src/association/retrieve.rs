@@ -13,6 +13,7 @@ use dicom_ul::association::client::ClientAssociationOptions;
 use dicom_ul::association::server::AsyncServerAssociation;
 use dicom_ul::pdu::{PDataValue, PDataValueType, Pdu};
 
+use crate::device::{AssociationRegistry, SharedAssociationRegistry};
 use crate::dimse::request::build_cstore_rq;
 use crate::dimse::response::SubOperationCounts;
 use crate::dimse::rsp::parse_response;
@@ -104,6 +105,10 @@ pub async fn run_cmove_subops(
     scp_ae_title: &str,
     move_originator_ae: &str,
     originator_message_id: u16,
+    registry: Option<&SharedAssociationRegistry>,
+    ae_id: &str,
+    connection_id: &str,
+    connection_index: usize,
 ) -> Result<SubOperationCounts> {
     let mut completed = 0u16;
     let mut failed = 0u16;
@@ -132,6 +137,20 @@ pub async fn run_cmove_subops(
         .establish_with_async(remote_addr)
         .await
         .map_err(|source| Error::Ul { source })?;
+
+    let _guard = registry.map(|registry| {
+        let guard = AssociationRegistry::register_outbound(
+            registry,
+            ae_id,
+            scp_ae_title,
+            move_destination,
+            connection_id,
+            connection_index,
+            remote_addr,
+        );
+        registry.set_active(guard.id());
+        guard
+    });
 
     for (idx, inst) in instances.iter().enumerate() {
         let dataset = read_instance_dataset(inst)?;
